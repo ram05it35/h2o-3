@@ -494,6 +494,19 @@ public final class ParseDataset {
       Log.trace("Done locally collecting domains on each node.");
     }
 
+    private static boolean validatePackedDomain(byte[] dom, String context) {
+      int len = UnsafeUtils.get4(dom, 0);
+      int domLen = UnsafeUtils.get4(dom, 4);
+      BufferedString cat = new BufferedString(dom, 8, domLen);
+      int bi = 8;
+      for (int i = 0; i < len; i++) {
+        domLen = UnsafeUtils.get4(dom, bi);
+        assert domLen >= 0 : context + ": domLen=" + domLen + ", bi=" + bi + "packed size=" + dom.length + ", len=" + len;
+        bi += 4;
+      }
+      return true;
+    }
+    
     @Override
     public void reduce(final GatherCategoricalDomainsTask other) {
       if (_packedDomains == null) {
@@ -509,6 +522,8 @@ public final class ParseDataset {
               // merge sorted packed domains with duplicate removal
               final byte[] thisDom = _packedDomains[fi];
               final byte[] otherDom = fOther._packedDomains[fi];
+              assert validatePackedDomain(thisDom, "ParseDataset.reduce-thisDom#" + fi);
+              assert validatePackedDomain(otherDom, "ParseDataset.reduce-otherDom#" + fi);
               final int tLen = UnsafeUtils.get4(thisDom, 0), oLen = UnsafeUtils.get4(otherDom, 0);
               int tDomLen = UnsafeUtils.get4(thisDom, 4);
               int oDomLen = UnsafeUtils.get4(otherDom, 4);
