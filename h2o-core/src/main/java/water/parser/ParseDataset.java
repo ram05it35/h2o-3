@@ -493,11 +493,14 @@ public final class ParseDataset {
     
     @Override
     public void reduce(final GatherCategoricalDomainsTask other) {
-      for (int i = 0; i < _catColIdxs.length; i++) {
-        String[] as = BufferedString.toString(this.domains[i]);
-        String[] bs = BufferedString.toString(other.domains[i]);
-        String[] abs = ArrayUtils.domainUnion(as, bs);
-        domains[i] = BufferedString.toBufferedString(abs);
+      if (domains == null) domains = other.domains;
+      else if (other.domains != null) {
+        for (int i = 0; i < _catColIdxs.length; i++) {
+          String[] as = BufferedString.toString(this.domains[i]);
+          String[] bs = BufferedString.toString(other.domains[i]);
+          String[] cs = ArrayUtils.domainUnion(as, bs);
+          domains[i] = BufferedString.toBufferedString(cs);
+        }
       }
         
       Log.trace("Done merging domains.");
