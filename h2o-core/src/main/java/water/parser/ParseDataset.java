@@ -605,7 +605,7 @@ public final class ParseDataset {
       Log.trace("Done merging domains.");
     }
 
-    private byte[] packDomain(BufferedString[] domain) {
+    byte[] packDomain(BufferedString[] domain) {
       int totStrLen =0;
       for(BufferedString dom : domain)
         totStrLen += dom.length();
@@ -619,6 +619,7 @@ public final class ParseDataset {
         for(int j=0; j < buf.length; j++) //Store str chars
           packedDom[i++] = buf[j];
       }
+      assert validatePackedDomain(packedDom, "line 622 of ParseDataset,  packDomain; source was: " + Arrays.toString(domain));
       return packedDom;
     }
     public int getDomainLength(int colIdx) {
