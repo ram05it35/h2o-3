@@ -489,8 +489,10 @@ public final class ParseDataset {
         _perColDomains[i] = _colCats[col].getColumnDomain();
         Arrays.sort(_perColDomains[i]);
         _packedDomains[i] = packDomain(_perColDomains[i]);
+        assert validatePackedDomain(_packedDomains[i], "line 492 of ParseDataset, setupLocal");
         i++;
       }
+      assert validateAllPackedDomain(_packedDomains, "line 495 of ParseDataset, setupLocal");
       Log.trace("Done locally collecting domains on each node.");
     }
 
@@ -507,11 +509,20 @@ public final class ParseDataset {
       return true;
     }
     
+    private static boolean validateAllPackedDomain(byte[][] doms, String context) {
+      for (int i = 0; i < doms.length; i++) {
+        validatePackedDomain(doms[i], context + "#" + i);
+      }
+      return true;
+    }
+    
     @Override
     public void reduce(final GatherCategoricalDomainsTask other) {
       if (_packedDomains == null) {
         _packedDomains = other._packedDomains;
       } else if (other._packedDomains != null) { // merge two packed domains
+        assert validateAllPackedDomain(_packedDomains, "line 524 of ParseDataset, this one");
+        assert validateAllPackedDomain(_packedDomains, "line 525 of ParseDataset, that one");
         H2OCountedCompleter[] domtasks = new H2OCountedCompleter[_catColIdxs.length];
         for (int i = 0; i < _catColIdxs.length; i++) {
           final int fi = i;
