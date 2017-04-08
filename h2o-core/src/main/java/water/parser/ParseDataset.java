@@ -471,6 +471,7 @@ public final class ParseDataset {
     private final Key _k;
     private final int[] _catColIdxs;
     private byte[][] _packedDomains;
+    private BufferedString[][] _unpackedDomains;
 
     private GatherCategoricalDomainsTask(Key k, int[] ccols) {
       _k = k;
@@ -481,6 +482,7 @@ public final class ParseDataset {
     public void setupLocal() {
       if (!MultiFileParseTask._categoricals.containsKey(_k)) return;
       _packedDomains = new byte[_catColIdxs.length][];
+      _unpackedDomains = new BufferedString[_catColIdxs.length][];
       final BufferedString[][] _perColDomains = new BufferedString[_catColIdxs.length][];
       final Categorical[] _colCats = MultiFileParseTask._categoricals.get(_k);
       int i = 0;
@@ -488,6 +490,7 @@ public final class ParseDataset {
         _colCats[col].convertToUTF8(col + 1);
         _perColDomains[i] = _colCats[col].getColumnDomain();
         Arrays.sort(_perColDomains[i]);
+        _unpackedDomains[i] = _perColDomains[i];
         _packedDomains[i] = packDomain(_perColDomains[i]);
         assert validatePackedDomain(_packedDomains[i], "Line 492 of ParseDataset, setupLocal");
         i++;
@@ -496,16 +499,7 @@ public final class ParseDataset {
     }
 
     private static boolean validatePackedDomain(byte[] dom, String context) {
-      int len = UnsafeUtils.get4(dom, 0);
-      int domLen = UnsafeUtils.get4(dom, 4);
-      BufferedString cat = new BufferedString(dom, 8, domLen);
-      int bi = 8;
-      for (int i = 0; i < len; i++) {
-        domLen = UnsafeUtils.get4(dom, bi);
-        
-        assert domLen >= 0 : context + ": domLen=" + domLen + ", bi=" + bi + ", packed size=" + dom.length + ", len=" + len;
-        bi += 4 + domLen;
-      }
+      assert unpackDomain(dom) != null : context + " - failed on " + dom.length + " bytes";
       return true;
     }
     
@@ -629,17 +623,25 @@ public final class ParseDataset {
 
     public String[] getDomain(int colIdx) {
       if (_packedDomains == null) return null;
-      final int strCnt = UnsafeUtils.get4(_packedDomains[colIdx], 0);
-      final String[] res = new String[strCnt];
-      int j = 4;
-      for (int i=0; i < strCnt; i++) {
-        final int strLen = UnsafeUtils.get4(_packedDomains[colIdx], j);
-        j += 4;
-        res[i] = new String(_packedDomains[colIdx], j, strLen, Charsets.UTF_8);
-        j += strLen;
-      }
-      return res;
+      final byte[] dom = _packedDomains[colIdx];
+      String[] unpacked = unpackDomain(dom);
+      assert unpacked != null : "Bad domain string length, index" + colIdx;
+      return unpacked;
     }
+  }
+
+  static String[] unpackDomain(byte[] dom) {
+    final int strCnt = UnsafeUtils.get4(dom, 0);
+    final String[] res = new String[strCnt];
+    int j = 4;
+    for (int i=0; i < strCnt; i++) {
+      final int strLen = UnsafeUtils.get4(dom, j);
+      if (strLen < 0) return null;
+      j += 4;
+      res[i] = new String(dom, j, strLen, Charsets.UTF_8);
+      j += strLen;
+    }
+    return res;
   }
 
   // --------------------------------------------------------------------------
