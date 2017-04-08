@@ -488,11 +488,13 @@ public final class ParseDataset {
         _colCats[col].convertToUTF8(col + 1);
         _perColDomains[i] = _colCats[col].getColumnDomain();
         Arrays.sort(_perColDomains[i]);
-        _packedDomains[i] = packDomain(_perColDomains[i]);
-        assert validatePackedDomain(_packedDomains[i], "line 492 of ParseDataset, setupLocal");
+        byte[] pd = packDomain(_perColDomains[i]);
+        assert validatePackedDomain(pd, "Line 492 of ParseDataset, setupLocal");
+        _packedDomains[i] = pd;
+        assert validatePackedDomain(_packedDomains[i], "Line 494 of ParseDataset, setupLocal");
         i++;
       }
-      assert validateAllPackedDomain(_packedDomains, "line 495 of ParseDataset, setupLocal");
+      assert validateAllPackedDomain(_packedDomains, "Line 497 of ParseDataset, setupLocal");
       Log.trace("Done locally collecting domains on each node.");
     }
 
@@ -503,8 +505,9 @@ public final class ParseDataset {
       int bi = 8;
       for (int i = 0; i < len; i++) {
         domLen = UnsafeUtils.get4(dom, bi);
-        assert domLen >= 0 : context + ": domLen=" + domLen + ", bi=" + bi + "packed size=" + dom.length + ", len=" + len;
-        bi += 4;
+        
+        assert domLen >= 0 : context + ": domLen=" + domLen + ", bi=" + bi + ", packed size=" + dom.length + ", len=" + len;
+        bi += 4 + domLen;
       }
       return true;
     }
@@ -521,8 +524,8 @@ public final class ParseDataset {
       if (_packedDomains == null) {
         _packedDomains = other._packedDomains;
       } else if (other._packedDomains != null) { // merge two packed domains
-        assert validateAllPackedDomain(_packedDomains, "line 524 of ParseDataset, this one");
-        assert validateAllPackedDomain(_packedDomains, "line 525 of ParseDataset, that one");
+        assert validateAllPackedDomain(_packedDomains, "Line 526 of ParseDataset, this one");
+        assert validateAllPackedDomain(_packedDomains, "Line 527 of ParseDataset, that one");
         H2OCountedCompleter[] domtasks = new H2OCountedCompleter[_catColIdxs.length];
         for (int i = 0; i < _catColIdxs.length; i++) {
           final int fi = i;
@@ -619,7 +622,7 @@ public final class ParseDataset {
         for(int j=0; j < buf.length; j++) //Store str chars
           packedDom[i++] = buf[j];
       }
-      assert validatePackedDomain(packedDom, "line 622 of ParseDataset,  packDomain; source was: " + Arrays.toString(domain));
+      assert validatePackedDomain(packedDom, "Line 624 of ParseDataset,  packDomain; source was: " + Arrays.toString(domain));
       return packedDom;
     }
     public int getDomainLength(int colIdx) {
