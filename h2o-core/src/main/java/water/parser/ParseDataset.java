@@ -488,13 +488,10 @@ public final class ParseDataset {
         _colCats[col].convertToUTF8(col + 1);
         _perColDomains[i] = _colCats[col].getColumnDomain();
         Arrays.sort(_perColDomains[i]);
-        byte[] pd = packDomain(_perColDomains[i]);
-        assert validatePackedDomain(pd, "Line 492 of ParseDataset, setupLocal");
-        _packedDomains[i] = pd;
-        assert validatePackedDomain(_packedDomains[i], "Line 494 of ParseDataset, setupLocal");
+        _packedDomains[i] = packDomain(_perColDomains[i]);
+        assert validatePackedDomain(_packedDomains[i], "Line 492 of ParseDataset, setupLocal");
         i++;
       }
-      assert validateAllPackedDomain(_packedDomains, "Line 497 of ParseDataset, setupLocal");
       Log.trace("Done locally collecting domains on each node.");
     }
 
@@ -524,8 +521,8 @@ public final class ParseDataset {
       if (_packedDomains == null) {
         _packedDomains = other._packedDomains;
       } else if (other._packedDomains != null) { // merge two packed domains
-        assert validateAllPackedDomain(_packedDomains, "Line 526 of ParseDataset, this one");
-        assert validateAllPackedDomain(_packedDomains, "Line 527 of ParseDataset, that one");
+        assert validateAllPackedDomain(_packedDomains, "Line 524 of ParseDataset, this one");
+        assert validateAllPackedDomain(_packedDomains, "Line 525 of ParseDataset, that one");
         H2OCountedCompleter[] domtasks = new H2OCountedCompleter[_catColIdxs.length];
         for (int i = 0; i < _catColIdxs.length; i++) {
           final int fi = i;
@@ -622,7 +619,7 @@ public final class ParseDataset {
         for(int j=0; j < buf.length; j++) //Store str chars
           packedDom[i++] = buf[j];
       }
-      assert validatePackedDomain(packedDom, "Line 624 of ParseDataset,  packDomain; source was: " + Arrays.toString(domain));
+      assert validatePackedDomain(packedDom, "Line 622 of ParseDataset,  packDomain; source was: " + Arrays.toString(domain));
       return packedDom;
     }
     public int getDomainLength(int colIdx) {
