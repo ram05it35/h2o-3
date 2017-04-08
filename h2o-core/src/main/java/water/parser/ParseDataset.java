@@ -494,7 +494,7 @@ public final class ParseDataset {
     @Override
     public void reduce(final GatherCategoricalDomainsTask other) {
       if (domains == null) domains = other.domains;
-      else if (other.domains != null) {
+      else if (other != null && other.domains != null) {
         for (int i = 0; i < _catColIdxs.length; i++) {
           String[] as = BufferedString.toString(this.domains[i]);
           String[] bs = BufferedString.toString(other.domains[i]);
