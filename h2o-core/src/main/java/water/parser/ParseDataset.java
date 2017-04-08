@@ -1,6 +1,5 @@
 package water.parser;
 
-import com.google.common.base.Charsets;
 import jsr166y.CountedCompleter;
 import jsr166y.ForkJoinTask;
 import jsr166y.RecursiveAction;
@@ -470,8 +469,7 @@ public final class ParseDataset {
   private static class GatherCategoricalDomainsTask extends MRTask<GatherCategoricalDomainsTask> {
     private final Key _k;
     private final int[] _catColIdxs;
-    private byte[][] _packedDomains;
-    private BufferedString[][] _unpackedDomains;
+    private BufferedString[][] domains;
 
     private GatherCategoricalDomainsTask(Key k, int[] ccols) {
       _k = k;
@@ -481,167 +479,37 @@ public final class ParseDataset {
     @Override
     public void setupLocal() {
       if (!MultiFileParseTask._categoricals.containsKey(_k)) return;
-      _packedDomains = new byte[_catColIdxs.length][];
-      _unpackedDomains = new BufferedString[_catColIdxs.length][];
-      final BufferedString[][] _perColDomains = new BufferedString[_catColIdxs.length][];
+      domains = new BufferedString[_catColIdxs.length][];
       final Categorical[] _colCats = MultiFileParseTask._categoricals.get(_k);
       int i = 0;
       for (int col : _catColIdxs) {
         _colCats[col].convertToUTF8(col + 1);
-        _perColDomains[i] = _colCats[col].getColumnDomain();
-        Arrays.sort(_perColDomains[i]);
-        _unpackedDomains[i] = _perColDomains[i];
-        _packedDomains[i] = packDomain(_perColDomains[i]);
-        assert validatePackedDomain(_packedDomains[i], "Line 492 of ParseDataset, setupLocal");
+        domains[i] = _colCats[col].getColumnDomain();
+        Arrays.sort(domains[i]);
         i++;
       }
       Log.trace("Done locally collecting domains on each node.");
     }
-
-    private static boolean validatePackedDomain(byte[] dom, String context) {
-      assert unpackDomain(dom) != null : context + " - failed on " + dom.length + " bytes";
-      return true;
-    }
-    
-    private static boolean validateAllPackedDomain(byte[][] doms, String context) {
-      for (int i = 0; i < doms.length; i++) {
-        validatePackedDomain(doms[i], context + "#" + i);
-      }
-      return true;
-    }
     
     @Override
     public void reduce(final GatherCategoricalDomainsTask other) {
-      if (_packedDomains == null) {
-        _packedDomains = other._packedDomains;
-      } else if (other._packedDomains != null) { // merge two packed domains
-        assert validateAllPackedDomain(_packedDomains, "Line 524 of ParseDataset, this one");
-        assert validateAllPackedDomain(_packedDomains, "Line 525 of ParseDataset, that one");
-        H2OCountedCompleter[] domtasks = new H2OCountedCompleter[_catColIdxs.length];
-        for (int i = 0; i < _catColIdxs.length; i++) {
-          final int fi = i;
-          final GatherCategoricalDomainsTask fOther = other;
-          H2O.submitTask(domtasks[i] = new H2OCountedCompleter() {
-            @Override
-            public void compute2() {
-              // merge sorted packed domains with duplicate removal
-              final byte[] thisDom = _packedDomains[fi];
-              final byte[] otherDom = fOther._packedDomains[fi];
-              assert validatePackedDomain(thisDom, "ParseDataset.reduce-thisDom#" + fi);
-              assert validatePackedDomain(otherDom, "ParseDataset.reduce-otherDom#" + fi);
-              final int tLen = UnsafeUtils.get4(thisDom, 0), oLen = UnsafeUtils.get4(otherDom, 0);
-              int tDomLen = UnsafeUtils.get4(thisDom, 4);
-              int oDomLen = UnsafeUtils.get4(otherDom, 4);
-              BufferedString tCat = new BufferedString(thisDom, 8, tDomLen);
-              BufferedString oCat = new BufferedString(otherDom, 8, oDomLen);
-              int ti = 0, oi = 0, tbi = 8, obi = 8, mbi = 4, mergeLen = 0;
-              byte[] mergedDom = new byte[thisDom.length + otherDom.length];
-              // merge
-              while (ti < tLen && oi < oLen) {
-                // compare thisDom to otherDom
-                int x = tCat.compareTo(oCat);
-                // this < or equal to other
-                if (x <= 0) {
-                  UnsafeUtils.set4(mergedDom, mbi, tDomLen); //Store str len
-                  mbi += 4;
-                  for (int j = 0; j < tDomLen; j++)
-                    mergedDom[mbi++] = thisDom[tbi++];
-                  tDomLen = UnsafeUtils.get4(thisDom, tbi);
-                  assert tDomLen >= 0 : getClass().getName() + ".reduce/1: tDomLen=" + tDomLen + ", tbi=" + tbi + "; fi=" + fi + "/" + _catColIdxs.length + "packed size=" + thisDom.length + ", tlen=" + tLen;
-                  tbi += 4;
-                  tCat.set(thisDom, tbi, tDomLen);
-                  ti++;
-                  if (x == 0) { // this == other
-                    obi += oDomLen;
-                    oDomLen = UnsafeUtils.get4(otherDom, obi);
-                    obi += 4;
-                    assert oDomLen >= 0 : getClass().getName() + ".reduce/2: oDomLen=" + oDomLen + ", obi=" + obi;
-                    oCat.set(otherDom, obi, oDomLen);
-                    oi++;
-                  }
-                } else { // other < this
-                  UnsafeUtils.set4(mergedDom, mbi, oDomLen); //Store str len
-                  mbi += 4;
-                  for (int j = 0; j < oDomLen; j++)
-                    mergedDom[mbi++] = otherDom[obi++];
-                  oDomLen = UnsafeUtils.get4(otherDom, obi);
-                  obi += 4;
-                  assert oDomLen >= 0 : getClass().getName() + ".reduce/3: oDomLen=" + oDomLen + ", obi=" + obi;
-                  oCat.set(otherDom, obi, oDomLen);
-                  oi++;
-                }
-                mergeLen++;
-              }
-              // merge remainder of longer list
-              if (ti < tLen) {
-                tbi -= 4;
-                int remainder = thisDom.length - tbi;
-                System.arraycopy(thisDom,tbi,mergedDom,mbi,remainder);
-                mbi += remainder;
-                mergeLen += tLen - ti;
-              } else { //oi < oLen
-                obi -= 4;
-                int remainder = otherDom.length - obi;
-                System.arraycopy(otherDom,obi,mergedDom,mbi,remainder);
-                mbi += remainder;
-                mergeLen += oLen - oi;
-              }
-              _packedDomains[fi]  = Arrays.copyOf(mergedDom, mbi);// reduce size
-              UnsafeUtils.set4(_packedDomains[fi], 0, mergeLen);
-              Log.trace("Merged domain length is "+mergeLen+" for the "
-                  +PrettyPrint.withOrdinalIndicator(fi+1)+ " categorical column.");;
-              tryComplete();
-            }
-          });
-        }
-        for (int i = 0; i < _catColIdxs.length; i++) if (domtasks[i] != null) domtasks[i].join();
+      for (int i = 0; i < _catColIdxs.length; i++) {
+        String[] as = BufferedString.toString(this.domains[i]);
+        String[] bs = BufferedString.toString(other.domains[i]);
+        String[] abs = ArrayUtils.domainUnion(as, bs);
+        domains[i] = BufferedString.toBufferedString(abs);
       }
+        
       Log.trace("Done merging domains.");
     }
 
-    byte[] packDomain(BufferedString[] domain) {
-      int totStrLen =0;
-      for(BufferedString dom : domain)
-        totStrLen += dom.length();
-      final byte[] packedDom = MemoryManager.malloc1(4 + (domain.length << 2) + totStrLen, false);
-      UnsafeUtils.set4(packedDom, 0, domain.length); //Store domain size
-      int i = 4;
-      for(BufferedString dom : domain) {
-        UnsafeUtils.set4(packedDom, i, dom.length()); //Store str len
-        i += 4;
-        byte[] buf = dom.getBuffer();
-        for(int j=0; j < buf.length; j++) //Store str chars
-          packedDom[i++] = buf[j];
-      }
-      assert validatePackedDomain(packedDom, "Line 622 of ParseDataset,  packDomain; source was: " + Arrays.toString(domain));
-      return packedDom;
-    }
     public int getDomainLength(int colIdx) {
-      if (_packedDomains == null) return 0;
-      else return UnsafeUtils.get4(_packedDomains[colIdx], 0);
+      return domains == null ? 0 : domains[colIdx].length;
     }
 
     public String[] getDomain(int colIdx) {
-      if (_packedDomains == null) return null;
-      final byte[] dom = _packedDomains[colIdx];
-      String[] unpacked = unpackDomain(dom);
-      assert unpacked != null : "Bad domain string length, index" + colIdx;
-      return unpacked;
+      return domains == null ? null : BufferedString.toString(domains[colIdx]);
     }
-  }
-
-  static String[] unpackDomain(byte[] dom) {
-    final int strCnt = UnsafeUtils.get4(dom, 0);
-    final String[] res = new String[strCnt];
-    int j = 4;
-    for (int i=0; i < strCnt; i++) {
-      final int strLen = UnsafeUtils.get4(dom, j);
-      if (strLen < 0) return null;
-      j += 4;
-      res[i] = new String(dom, j, strLen, Charsets.UTF_8);
-      j += strLen;
-    }
-    return res;
   }
 
   // --------------------------------------------------------------------------
@@ -1075,7 +943,7 @@ public final class ParseDataset {
     }
 
     // Find & remove all partially built output chunks & vecs
-    private Futures onExceptionCleanup(Futures fs) {
+    Futures onExceptionCleanup(Futures fs) {
       int nchunks = _chunk2ParseNodeMap.length;
       int ncols = _parseSetup._number_columns;
       for( int i = 0; i < ncols; ++i ) {

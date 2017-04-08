@@ -918,8 +918,11 @@ public class ArrayUtils {
    * @param a a set of strings
    * @param b a set of strings
    * @return union of arrays
+   * // TODO: add testts
    */
   public static String[] domainUnion(String[] a, String[] b) {
+    if (a == null) return b;
+    if (b == null) return a;
     int cIinA = numInts(a);
     int cIinB = numInts(b);
     // Trivial case - all strings or ints, sorted
