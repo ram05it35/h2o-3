@@ -919,7 +919,7 @@ public class ArrayUtils {
    * @param a a set of strings
    * @param b a set of strings
    * @return union of arrays
-   * // TODO: add testts
+   * // TODO: add tests
    */
   public static String[] domainUnion(String[] a, String[] b) {
     if (a == null) return b;
@@ -953,7 +953,8 @@ public class ArrayUtils {
    * precondition a!=null &amp;&amp; b!=null
    */
   public static String[] union(String[] a, String[] b, boolean lexo) {
-    assert a!=null && b!=null : "Union expect non-null input!";
+    if (a == null) return b;
+    if (b == null) return a;
     return union(a, b, 0, a.length, 0, b.length, lexo);
   }
   public static String[] union(String[] a, String[] b, int aoff, int alen, int boff, int blen, boolean lexo) {

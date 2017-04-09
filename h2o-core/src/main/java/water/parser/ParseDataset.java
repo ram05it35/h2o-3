@@ -498,7 +498,7 @@ public final class ParseDataset {
         for (int i = 0; i < _catColIdxs.length; i++) {
           String[] as = BufferedString.toString(this.domains[i]);
           String[] bs = BufferedString.toString(other.domains[i]);
-          String[] cs = ArrayUtils.domainUnion(as, bs);
+          String[] cs = ArrayUtils.union(as, bs, false);
           domains[i] = BufferedString.toBufferedString(cs);
         }
       }
