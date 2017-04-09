@@ -480,14 +480,11 @@ public class NewChunkTest extends TestUtil {
       assertEquals("Wrong sparseLenZro", nc.sparseLenZero(), 2);
       assertEquals("Wrong sparseLenNA", nc.sparseLenNA(), K);
 
-      //for (int i = 0; i < K-5; i++) 
-      assertEquals("Wrong (1) at 0", 0, nc.atd(0), Math.ulp(0));
+      for (int i = 0; i < K-5; i++) assertEquals("Wrong (1) at " + i, 0, nc.atd(0), Math.ulp(0));
       assertEquals("Wrong (2) at " + (K-5), extra, nc.atd(K-5), Math.ulp(extra));
       assertEquals("Wrong (3) at " + (K-4), 0, nc.atd(K-4), Math.ulp(0));
-      assertEquals("Wrong (4) at " + (K-3), Double.NaN, nc.atd(K-3), Math.ulp(Double.NaN));
-      for (int i = K-2; i < K; i++) {
-        assertEquals("Wrong (5) at " + i, 0, nc.atd(i), Math.ulp(0));
-      }
+      assertEquals("Wrong (4) at " + (K-3), Double.NaN, nc.atd(K-3), Math.ulp(Double.NaN)); // this is weird: ulp(NaN) is NaN)
+      for (int i = K-2; i < K; i++) assertEquals("Wrong (5) at " + i, 0, nc.atd(i), Math.ulp(0));
       
       post();
       cc.set(K-5, 0);
