@@ -26,7 +26,6 @@ def hdfs_import_bigCat():
                     "/datasets/bigCatFiles/hundredThousandCat100C.csv",
                     "/datasets/bigCatFiles/oneMillionCat50C.csv"]
         reps = [10, 10, 10, 50, 50,  100, 100,50]
-
         for ind in range(0,len(allFiles)):  # run tests for 3 different sizes per Tomas request
             print("*******  Parsing file {0} ********".format(allFiles[ind]))
             runPerformance("hdfs://{0}{1}".format(hdfs_name_node, allFiles[ind]), numTimes, reps[ind])
