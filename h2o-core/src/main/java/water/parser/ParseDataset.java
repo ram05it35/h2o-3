@@ -469,7 +469,7 @@ public final class ParseDataset {
   private static class GatherCategoricalDomainsTask extends MRTask<GatherCategoricalDomainsTask> {
     private final Key _k;
     private final int[] _catColIdxs;
-    private BufferedString[][] domains;
+    private byte[][] _packedDomains;
 
     private GatherCategoricalDomainsTask(Key k, int[] ccols) {
       _k = k;
@@ -479,13 +479,15 @@ public final class ParseDataset {
     @Override
     public void setupLocal() {
       if (!MultiFileParseTask._categoricals.containsKey(_k)) return;
-      domains = new BufferedString[_catColIdxs.length][];
+      _packedDomains = new byte[_catColIdxs.length][];
+      final BufferedString[][] _perColDomains = new BufferedString[_catColIdxs.length][];
       final Categorical[] _colCats = MultiFileParseTask._categoricals.get(_k);
       int i = 0;
       for (int col : _catColIdxs) {
         _colCats[col].convertToUTF8(col + 1);
-        domains[i] = _colCats[col].getColumnDomain();
-        Arrays.sort(domains[i]);
+        _perColDomains[i] = _colCats[col].getColumnDomain();
+        Arrays.sort(_perColDomains[i]);
+        _packedDomains[i] = PackedDomains.pack(_perColDomains[i]);
         i++;
       }
       Log.trace("Done locally collecting domains on each node.");
@@ -493,13 +495,12 @@ public final class ParseDataset {
     
     @Override
     public void reduce(final GatherCategoricalDomainsTask other) {
-      if (domains == null) domains = other.domains;
-      else if (other != null && other.domains != null) {
+      if (_packedDomains == null) {
+        _packedDomains = other._packedDomains;
+      } else if (other._packedDomains != null) { // merge two packed domains
+        H2OCountedCompleter[] domtasks = new H2OCountedCompleter[_catColIdxs.length];
         for (int i = 0; i < _catColIdxs.length; i++) {
-          String[] as = BufferedString.toString(this.domains[i]);
-          String[] bs = BufferedString.toString(other.domains[i]);
-          String[] cs = ArrayUtils.union(as, bs, true);
-          domains[i] = BufferedString.toBufferedString(cs);
+          _packedDomains[i] = PackedDomains.merge(_packedDomains[i], other._packedDomains[i]);
         }
       }
         
@@ -507,11 +508,11 @@ public final class ParseDataset {
     }
 
     public int getDomainLength(int colIdx) {
-      return domains == null ? 0 : domains[colIdx].length;
+      return _packedDomains == null ? 0 : PackedDomains.sizeOf(_packedDomains[colIdx]);
     }
 
     public String[] getDomain(int colIdx) {
-      return domains == null ? null : BufferedString.toString(domains[colIdx]);
+      return _packedDomains == null ? null : PackedDomains.unpackToStrings(_packedDomains[colIdx]);
     }
   }
 

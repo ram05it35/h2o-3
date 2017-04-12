@@ -1613,8 +1613,22 @@ public class ArrayUtils {
   }
 
   public static int encodeAsInt(byte[] b) {
-    assert b.length == 4 : "Cannot encode more then 4 bytes into int: len = " + b.length;
+    assert b.length == 4 : "Cannot encode more than 4 bytes into int: len = " + b.length;
     return (b[0]&0xFF)+((b[1]&0xFF)<<8)+((b[2]&0xFF)<<16)+((b[3]&0xFF)<<24);
+  }
+
+  public static int encodeAsInt(byte[] bs, int at) {
+    assert (at + 3 < bs.length) : "Cannot encode more than 4 bytes into int: len = " + bs.length + ", pos=" + at;
+    return (bs[at]&0xFF)+((bs[at+1]&0xFF)<<8)+((bs[at+2]&0xFF)<<16)+((bs[at+3]&0xFF)<<24);
+  }
+
+  public static byte[] decodeAsInt(int what, byte[] bs, int at) {
+    if (bs.length < at + 4) throw new IndexOutOfBoundsException("Wrong position " + at + ", array length is " + bs.length);
+    for (int i = at; i < at+4 && i < bs.length; i++) {
+      bs[i] = (byte)(what&0xFF);
+      what >>= 8;
+    }
+    return bs;
   }
 
   /** Transform given long numbers into byte array.
