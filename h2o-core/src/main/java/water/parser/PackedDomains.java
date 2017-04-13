@@ -1,5 +1,7 @@
 package water.parser;
 
+import water.util.StringUtils;
+
 import java.io.*;
 import java.util.Arrays;
 
@@ -21,7 +23,7 @@ public class PackedDomains {
     for (int i = 0; i < n; i++) {
       int p0 = p;
       while (domain[p] != 0 && p++ < domain.length);
-      out[i] = new String(domain, p0, p - p0);
+      out[i] = StringUtils.toString(domain, p0, p - p0);
       p++;
     }
     return out;
