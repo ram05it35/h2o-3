@@ -32,9 +32,12 @@ public class PackedDomainsTest {
 
   @Test
   public void testPack1() throws Exception {
+    BufferedString bs = new BufferedString("efabc");
+    bs.addBuff("def".getBytes());
+    bs.setOff(2);
     byte[] packed = pack(new BufferedString[] {
         new BufferedString(""),
-        new BufferedString("abc"),
+        bs,
         new BufferedString("∞"),
         new BufferedString(""),
         new BufferedString("X")});
