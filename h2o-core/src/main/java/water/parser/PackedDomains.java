@@ -88,7 +88,12 @@ public class PackedDomains {
         else {
           int a = ia.read();
           int b = ib.read();
-          if (a == b) out.write(a);
+          if (a == b) {
+            out.write(a);
+            if (a == 0) {
+              ia.mark(0); ib.mark(0);
+            }
+          }
           else if (a < b) {
             out.write(a); 
             if (a != 0) dumpWord(ia, out);

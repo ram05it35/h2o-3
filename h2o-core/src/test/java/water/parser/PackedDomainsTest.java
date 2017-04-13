@@ -44,8 +44,8 @@ public class PackedDomainsTest {
   }
   
   byte[] empty = pack();
-  byte[] first = pack("ANNIHILATION", "Zoo");
-  byte[] second = pack("aardvark", "absolute", "neo", "xyzzy");
+  byte[] first = pack("", "ANNIHILATION", "Zoo");
+  byte[] second = pack("aardvark", "absolute", "neo", "x", "xyzzy");
   byte[] third = pack("", "abacus", "neolution", "x", "zambezi");
   String[] allWords = new String[] {
       "",
@@ -71,7 +71,7 @@ public class PackedDomainsTest {
   @Test
   public void testMerge12() throws Exception {
     final byte[] merged = merge(first, second);
-    assertArrayEquals(new String[] {"ANNIHILATION", "Zoo", "aardvark", "absolute", "neo", "xyzzy"}, unpackToStrings(merged));
+    assertArrayEquals(new String[] {"", "ANNIHILATION", "Zoo", "aardvark", "absolute", "neo", "x", "xyzzy"}, unpackToStrings(merged));
   }
 
   @Test
