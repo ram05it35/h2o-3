@@ -1618,7 +1618,7 @@ public class ArrayUtils {
   }
 
   public static int encodeAsInt(byte[] bs, int at) {
-    if (at + 4 > bs.length throw new IndexOutOfBoundsException("Cannot encode more than 4 bytes into int: len = " + bs.length + ", pos=" + at);
+    if (at + 4 > bs.length) throw new IndexOutOfBoundsException("Cannot encode more than 4 bytes into int: len = " + bs.length + ", pos=" + at);
     return (bs[at]&0xFF)+((bs[at+1]&0xFF)<<8)+((bs[at+2]&0xFF)<<16)+((bs[at+3]&0xFF)<<24);
   }
 
