@@ -501,7 +501,7 @@ public final class ParseDataset {
         H2OCountedCompleter[] domtasks = new H2OCountedCompleter[_catColIdxs.length];
         for (int i = 0; i < _catColIdxs.length; i++) {
           final int fi = i;
-          domtasks[i] = new H2OCountedCompleter() {
+          domtasks[i] = new H2OCountedCompleter(currThrPriority()) {
             @Override
             public void compute2() {
               _packedDomains[fi] = PackedDomains.merge(_packedDomains[fi], other._packedDomains[fi]);
