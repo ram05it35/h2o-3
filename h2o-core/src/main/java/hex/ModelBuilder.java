@@ -1092,6 +1092,36 @@ abstract public class ModelBuilder<M extends Model<M,P,O>, P extends Model.Param
     }
   }
 
+  // FIXME: this is a copy & paste of validation frame adaptation code; refactor!
+  protected Frame init_adaptFrameToTrain(Frame fr, String field, boolean expensive) {
+    if (fr.numRows()==0) error(field, "Frame must have > 0 rows.");
+    Frame adapted = new Frame(null /* not putting this into KV */, fr._names.clone(), fr.vecs().clone());
+    try {
+      String[] msgs = Model.adaptTestForTrain(_valid, null, null, _train._names, _train.domains(), _parms, expensive, true, null, getToEigenVec(), _toDelete, false);
+      Vec response = fr.vec(_parms._response_column);
+      if (response == null && _parms._response_column != null)
+        error(field, "Frame must have a response column '" + _parms._response_column + "'.");
+      if (expensive) {
+        for (String s : msgs) {
+          Log.info(s);
+          warn(field, s);
+        }
+      }
+    } catch (IllegalArgumentException iae) {
+      error(field, iae.getMessage());
+    }
+    if (expensive) {
+      String[] skipCols = new String[]{_parms._weights_column, _parms._offset_column, _parms._fold_column, _parms._response_column};
+      Frame newAdapted = FrameUtils.categoricalEncoder(adapted, skipCols, _parms._categorical_encoding, getToEigenVec());
+      if (newAdapted != adapted) {
+        assert(newAdapted._key != null);
+        adapted = newAdapted;
+        Scope.track(adapted);
+      }
+    }
+    return adapted;
+  }
+
   /**
    * Rebalance a frame for load balancing
    * @param original_fr Input frame
